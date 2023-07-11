@@ -3,14 +3,22 @@ package com.yxh.reggie.controller;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.yxh.reggie.common.BaseContext;
 import com.yxh.reggie.common.R;
+import com.yxh.reggie.dto.OrdersDto;
+import com.yxh.reggie.entity.OrderDetail;
 import com.yxh.reggie.entity.Orders;
+import com.yxh.reggie.service.OrderDetailService;
 import com.yxh.reggie.service.OrdersService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 @RestController
 @Slf4j
@@ -18,6 +26,8 @@ import java.time.LocalDateTime;
 public class OrderController {
     @Autowired
     private OrdersService ordersService;
+    @Autowired
+    private OrderDetailService orderDetailService;
 
     /**
      * 提交订单
@@ -62,5 +72,34 @@ public class OrderController {
         wrapper.eq(Orders::getId,orders.getId()).set(Orders::getStatus,orders.getStatus());
         ordersService.update(wrapper);
         return R.success("派送成功");
+    }
+    /**
+     * 用户端订单显示
+     */
+    @GetMapping("userPage")
+    public R<Page> page(int page,int pageSize){
+        Page<OrdersDto> ordersDtoPage = new Page<>();
+        Page<Orders> ordersPage = new Page<>();
+        LambdaQueryWrapper<Orders> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Orders::getUserId, BaseContext.getCurrentId()).orderByDesc(Orders::getOrderTime);
+        ordersService.page(ordersPage,wrapper);
+        BeanUtils.copyProperties(ordersPage,ordersDtoPage,"records");
+        OrdersDto ordersDto = new OrdersDto();
+        Orders orders = ordersPage.getRecords().get(0);
+        BeanUtils.copyProperties(orders,ordersDto);
+        LambdaQueryWrapper<OrderDetail> wrapper1 = new LambdaQueryWrapper<>();
+        wrapper1.eq(OrderDetail::getOrderId,orders.getId());
+        List<OrderDetail> orderDetails = orderDetailService.list(wrapper1);
+        ordersDto.setOrderDetails(orderDetails);
+        ordersDtoPage.setRecords(Arrays.asList(ordersDto));
+        return R.success(ordersDtoPage);
+    }
+    /**
+     * 再来一单
+     */
+    @PostMapping("again")
+    public R<String> again(@RequestBody Long id){
+        //body接受请求体jason，param接受请求头及地址栏后的，pathvariable为/{id}
+        return R.success("再来一单");
     }
 }
