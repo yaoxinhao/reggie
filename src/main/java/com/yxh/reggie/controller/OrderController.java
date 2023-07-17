@@ -6,10 +6,8 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.yxh.reggie.common.BaseContext;
 import com.yxh.reggie.common.R;
 import com.yxh.reggie.dto.OrdersDto;
-import com.yxh.reggie.entity.OrderDetail;
-import com.yxh.reggie.entity.Orders;
-import com.yxh.reggie.service.OrderDetailService;
-import com.yxh.reggie.service.OrdersService;
+import com.yxh.reggie.entity.*;
+import com.yxh.reggie.service.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +26,12 @@ public class OrderController {
     private OrdersService ordersService;
     @Autowired
     private OrderDetailService orderDetailService;
+    @Autowired
+    private ShoppingCartService shoppingCartService;
+    @Autowired
+    private DishService dishService;
+    @Autowired
+    private SetmealService setmealService;
 
     /**
      * 提交订单
@@ -98,8 +102,35 @@ public class OrderController {
      * 再来一单
      */
     @PostMapping("again")
-    public R<String> again(@RequestBody Long id){
-        //body接受请求体jason，param接受请求头及地址栏后的，pathvariable为/{id}
+    public R<String> again(@RequestBody Orders orders){
+        //body接受请求体json，param接受请求头及地址栏后的，pathvariable为/{id}
+        Long id = orders.getId();
+        //查出再来一单的订单细节
+        LambdaQueryWrapper<OrderDetail> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(OrderDetail::getOrderId,id);
+        List<OrderDetail> orderDetails = orderDetailService.list(wrapper);
+        //加入购物车
+        Long userId = BaseContext.getCurrentId();
+        ArrayList<ShoppingCart> shoppingCarts = new ArrayList<>();
+        for (OrderDetail orderDetail : orderDetails) {
+            ShoppingCart shoppingCart = new ShoppingCart();
+            shoppingCart.setName(orderDetail.getName());
+            shoppingCart.setUserId(userId);
+            if (orderDetail.getDishId()!=null){
+                Dish dish = dishService.getById(orderDetail.getDishId());
+                shoppingCart.setDishId(orderDetail.getDishId());
+                shoppingCart.setImage(dish.getImage());
+            }else {
+                Setmeal setmeal = setmealService.getById(orderDetail.getSetmealId());
+                shoppingCart.setSetmealId(setmeal.getId());
+                shoppingCart.setImage(setmeal.getImage());
+            }
+            shoppingCart.setDishFlavor(orderDetail.getDishFlavor());
+            shoppingCart.setNumber(orderDetail.getNumber());
+            shoppingCart.setAmount(orderDetail.getAmount());
+            shoppingCarts.add(shoppingCart);
+        }
+        shoppingCartService.saveBatch(shoppingCarts);
         return R.success("再来一单");
     }
 }
