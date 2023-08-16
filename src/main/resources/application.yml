@@ -9,6 +9,17 @@ spring:
       username: root
       password: yxh
       usePinMethod: false
+  redis:
+    host: localhost
+    port: 6379
+    #password: 123456
+    database: 0
+    jedis:
+      #redis连接池配置
+      max-active: 8
+      max-wait: 1ms
+      max-idle: 4
+      min-idle: 0
 mybatis-plus:
   configLocation:
     map-underscore-to-camel-case: true

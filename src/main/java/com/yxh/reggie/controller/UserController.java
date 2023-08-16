@@ -10,10 +10,12 @@ import com.yxh.reggie.entity.User;
 import com.yxh.reggie.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpSession;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @RestController
 @Slf4j
@@ -21,6 +23,8 @@ import java.util.Map;
 public class UserController {
     @Autowired
     private UserService userService;
+    @Autowired
+    private RedisTemplate redisTemplate;
 
     /**
      * 发送验证码
@@ -35,8 +39,11 @@ public class UserController {
         //生成验证码
         String code = ValidateCodeUtils.generateValidateCode(4).toString();
         log.info("code="+code);
+        //redis保存
+        redisTemplate.opsForValue().set(phone,code, 5,TimeUnit.MINUTES);
+        System.out.println("取出"+redisTemplate.opsForValue().get(phone));
         //保存在session中
-        session.setAttribute(phone,code);
+        //session.setAttribute(phone,code);
         return R.success("短信发送成功");
     }
 
@@ -51,9 +58,12 @@ public class UserController {
         //获得输入的手机号和验证码
         String phone = map.get("phone").toString();
         String code = map.get("code").toString();
+
 //        String phone1 = session.getAttribute(phone).toString();不能用这个
         //获得生产的验证码
-        Object phone1 = session.getAttribute(phone);
+        //Object phone1 = session.getAttribute(phone);
+        //redis获得输入的手机号和验证码
+        Object phone1 = redisTemplate.opsForValue().get(phone);
         //进行比对
         if (phone1!=null&&phone1.equals(code)){
             //查询是否存在用户
@@ -69,6 +79,8 @@ public class UserController {
             }
             //将用户信息存入session中
             session.setAttribute("user",user.getId());
+            //登录后删除redis中的验证码
+            redisTemplate.delete(phone);
             return R.success(user);
         }
         return R.error("登录失败");
