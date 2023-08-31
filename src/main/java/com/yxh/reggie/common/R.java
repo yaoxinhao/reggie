@@ -2,10 +2,11 @@ package com.yxh.reggie.common;
 
 import lombok.Data;
 
+import java.io.Serializable;
 import java.util.Map;
 
 @Data
-public class R<T> {
+public class R<T> implements Serializable {
     private Integer code;//1表示成功，0表示失败
     private String msg;//回显消息
     private T data;//数据
